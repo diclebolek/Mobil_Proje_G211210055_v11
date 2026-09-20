@@ -1,10 +1,13 @@
+import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { useTheme } from './src/hooks/useTheme';
 import { initDatabase } from './src/storage/storage';
@@ -118,17 +121,14 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Veritabanını başlat
     initDatabase().catch((error) => {
       console.error('Veritabanı başlatma hatası:', error);
     });
-    
-    // Bildirim izinlerini al
+
     registerForPushNotificationsAsync().catch((error) => {
       console.error('Bildirim izni hatası:', error);
     });
 
-    // Login durumunu kontrol et
     checkLoginStatus();
   }, []);
 
@@ -152,20 +152,23 @@ export default function App() {
   };
 
   if (isLoading) {
-    return null; // Veya bir loading ekranı gösterilebilir
+    return null;
   }
 
   return (
-    <ThemeProvider>
-      <NavigationContainer>
-        <StatusBar style="auto" />
-        <AppNavigator
-          isLoggedIn={isLoggedIn}
-          onLogin={handleLogin}
-          onLogout={handleLogout}
-        />
-      </NavigationContainer>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <NavigationContainer>
+            <StatusBar style="auto" />
+            <AppNavigator
+              isLoggedIn={isLoggedIn}
+              onLogin={handleLogin}
+              onLogout={handleLogout}
+            />
+          </NavigationContainer>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
-
