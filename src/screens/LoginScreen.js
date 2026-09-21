@@ -26,24 +26,19 @@ const COLORS = {
   purpleDeep: '#4F46E5',
 };
 
-function WalkingPeople() {
+function ButtonIcons() {
   return (
-    <View style={styles.peopleRow}>
+    <View style={styles.buttonIcons}>
       <View style={styles.person}>
         <View style={styles.personHead} />
         <View style={styles.personBody} />
         <View style={styles.personLegs}>
           <View style={styles.personLeg} />
-          <View style={[styles.personLeg, { transform: [{ rotate: '18deg' }] }]} />
-        </View>
-      </View>
-      <View style={[styles.person, { marginLeft: 4 }]}>
-        <View style={styles.personHead} />
-        <View style={styles.personBody} />
-        <View style={styles.personLegs}>
-          <View style={[styles.personLeg, { transform: [{ rotate: '-12deg' }] }]} />
           <View style={styles.personLeg} />
         </View>
+      </View>
+      <View style={styles.miniDoor}>
+        <View style={styles.miniDoorHole} />
       </View>
     </View>
   );
@@ -52,50 +47,45 @@ function WalkingPeople() {
 function KeyIcon() {
   return (
     <View style={styles.keyIcon}>
-      <View style={styles.keyHead} />
+      <View style={styles.keyBow}>
+        <View style={styles.keyBowHole} />
+      </View>
       <View style={styles.keyShaft} />
-      <View style={styles.keyBit} />
+      <View style={styles.keyTeethCol}>
+        <View style={styles.keyToothTall} />
+        <View style={styles.keyToothShort} />
+      </View>
     </View>
   );
 }
 
-function DoorIcon({ handleRotate, doorOpen, holeRef }) {
+function DoorIcon({ handleRotate, holeRef }) {
   const handleDeg = handleRotate.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '-125deg'],
-  });
-  const openDeg = doorOpen.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '-82deg'],
+    outputRange: ['0deg', '95deg'],
   });
 
   return (
     <View style={styles.doorStage}>
-      <Animated.View
-        style={[
-          styles.doorHinge,
-          {
-            transform: [{ perspective: 800 }, { rotateY: openDeg }],
-          },
-        ]}
-      >
-        <View style={styles.door}>
-          <View ref={holeRef} collapsable={false} style={styles.keyhole}>
-            <View style={styles.keyholeCircle} />
-            <View style={styles.keyholeSlot} />
-          </View>
-          <Animated.View
-            style={[
-              styles.handle,
-              { transform: [{ rotate: handleDeg }] },
-            ]}
-          >
-            <View style={styles.handlePivot} />
-            <View style={styles.handleBar} />
-            <View style={styles.handleKnob} />
-          </Animated.View>
+      <View style={styles.door}>
+        <View
+          ref={holeRef}
+          collapsable={false}
+          style={styles.keyhole}
+        >
+          <View style={styles.keyholeCircle} />
+          <View style={styles.keyholeSlot} />
         </View>
-      </Animated.View>
+        <Animated.View
+          style={[
+            styles.handle,
+            { transform: [{ rotate: handleDeg }] },
+          ]}
+        >
+          <View style={styles.handleBase} />
+          <View style={styles.handleBar} />
+        </Animated.View>
+      </View>
     </View>
   );
 }
@@ -104,99 +94,80 @@ const LoginScreen = ({ onLogin }) => {
   const [email, setEmail] = useState('diclebolek@gmail.com');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [keyTarget, setKeyTarget] = useState(118);
-  const walkX = useRef(new Animated.Value(0)).current;
-  const walkOpacity = useRef(new Animated.Value(1)).current;
+  const [keyHome, setKeyHome] = useState({ left: 148, top: 36 });
   const keyX = useRef(new Animated.Value(0)).current;
-  const keyRotate = useRef(new Animated.Value(0)).current;
+  const keyY = useRef(new Animated.Value(0)).current;
   const keyScale = useRef(new Animated.Value(1)).current;
   const keyOpacity = useRef(new Animated.Value(1)).current;
   const handleRotate = useRef(new Animated.Value(0)).current;
-  const doorOpen = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0.35)).current;
   const loopRef = useRef(null);
-  const pathRef = useRef(null);
+  const rowRef = useRef(null);
+  const keyHomeRef = useRef(null);
   const holeRef = useRef(null);
-  const keyTargetRef = useRef(118);
+  const keyDeltaRef = useRef({ x: 90, y: 0 });
   const insertingRef = useRef(false);
 
   const measureKeyTarget = () => {
-    if (!pathRef.current || !holeRef.current) {
+    if (!rowRef.current || !keyHomeRef.current || !holeRef.current) {
       return;
     }
-    pathRef.current.measureInWindow((px) => {
-      holeRef.current.measureInWindow((hx, _hy, hw) => {
-        const next = hx + hw / 2 - px - 19;
-        if (Number.isFinite(next) && next > 20) {
-          keyTargetRef.current = next;
-          setKeyTarget(next);
-        }
+    rowRef.current.measureInWindow((rx, ry) => {
+      keyHomeRef.current.measureInWindow((sx, sy, sw, sh) => {
+        holeRef.current.measureInWindow((hx, hy, hw, hh) => {
+          const left = sx - rx;
+          const top = sy - ry;
+          const dx = hx + hw / 2 - sx - sw / 2;
+          const dy = hy + hh / 2 - sy - sh / 2;
+          if (Number.isFinite(dx) && Number.isFinite(dy)) {
+            keyDeltaRef.current = { x: dx, y: dy };
+            setKeyHome({ left, top });
+          }
+        });
       });
     });
   };
 
   useEffect(() => {
-    const walkLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(walkX, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        Animated.timing(walkOpacity, {
-          toValue: 1,
-          duration: 120,
-          useNativeDriver: true,
-        }),
-        Animated.timing(walkX, {
-          toValue: 118,
-          duration: 2200,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(walkOpacity, {
-          toValue: 0,
-          duration: 280,
-          useNativeDriver: true,
-        }),
-        Animated.delay(400),
-      ])
-    );
-
     const runKeyCycle = () => {
       if (insertingRef.current) {
         return;
       }
       keyX.setValue(0);
-      keyRotate.setValue(0);
+      keyY.setValue(0);
       keyScale.setValue(1);
       keyOpacity.setValue(1);
       handleRotate.setValue(0);
-      doorOpen.setValue(0);
 
       const cycle = Animated.sequence([
-        Animated.timing(keyX, {
-          toValue: keyTargetRef.current,
-          duration: 1600,
-          easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
-        }),
         Animated.parallel([
-          Animated.timing(keyScale, {
-            toValue: 0.12,
-            duration: 320,
-            easing: Easing.in(Easing.cubic),
+          Animated.timing(keyX, {
+            toValue: keyDeltaRef.current.x,
+            duration: 1500,
+            easing: Easing.inOut(Easing.cubic),
             useNativeDriver: true,
           }),
-          Animated.timing(keyOpacity, {
-            toValue: 0,
-            duration: 320,
+          Animated.timing(keyY, {
+            toValue: keyDeltaRef.current.y,
+            duration: 1500,
+            easing: Easing.inOut(Easing.cubic),
             useNativeDriver: true,
           }),
         ]),
+        Animated.timing(keyScale, {
+          toValue: 0.15,
+          duration: 380,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(keyOpacity, {
+          toValue: 0,
+          duration: 160,
+          useNativeDriver: true,
+        }),
         Animated.timing(handleRotate, {
-          toValue: 0.4,
-          duration: 280,
+          toValue: 0.45,
+          duration: 320,
           useNativeDriver: true,
         }),
         Animated.timing(handleRotate, {
@@ -204,7 +175,7 @@ const LoginScreen = ({ onLogin }) => {
           duration: 280,
           useNativeDriver: true,
         }),
-        Animated.delay(450),
+        Animated.delay(400),
       ]);
 
       cycle.start(({ finished }) => {
@@ -230,17 +201,15 @@ const LoginScreen = ({ onLogin }) => {
       ])
     );
 
-    loopRef.current = { walkLoop, glowLoop, keyCycle: null };
-    walkLoop.start();
+    loopRef.current = { glowLoop, keyCycle: null };
     runKeyCycle();
     glowLoop.start();
 
     return () => {
-      walkLoop.stop();
       glowLoop.stop();
       loopRef.current?.keyCycle?.stop();
     };
-  }, [glow, handleRotate, keyOpacity, keyRotate, keyScale, keyX, walkOpacity, walkX]);
+  }, [glow, handleRotate, keyOpacity, keyScale, keyX, keyY]);
 
   const finishLogin = async () => {
     try {
@@ -256,64 +225,48 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   const playInsertAndOpen = () => {
-    const target = keyTargetRef.current;
-    walkX.setValue(0);
-    walkOpacity.setValue(1);
+    const { x, y } = keyDeltaRef.current;
     keyX.setValue(0);
-    keyRotate.setValue(0);
+    keyY.setValue(0);
     keyScale.setValue(1);
     keyOpacity.setValue(1);
     handleRotate.setValue(0);
-    doorOpen.setValue(0);
 
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(walkX, {
-          toValue: Math.max(target - 24, 80),
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
+        Animated.timing(keyX, {
+          toValue: x,
+          duration: 820,
+          easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
-        Animated.timing(keyX, {
-          toValue: target,
-          duration: 780,
+        Animated.timing(keyY, {
+          toValue: y,
+          duration: 820,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
       ]),
-      Animated.parallel([
-        Animated.timing(keyScale, {
-          toValue: 0.08,
-          duration: 280,
-          easing: Easing.in(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(keyOpacity, {
-          toValue: 0,
-          duration: 280,
-          useNativeDriver: true,
-        }),
-        Animated.timing(walkOpacity, {
-          toValue: 0,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.timing(handleRotate, {
-        toValue: 1,
+      Animated.timing(keyScale, {
+        toValue: 0.12,
         duration: 420,
-        easing: Easing.out(Easing.cubic),
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
-      Animated.timing(doorOpen, {
+      Animated.timing(keyOpacity, {
+        toValue: 0,
+        duration: 140,
+        useNativeDriver: true,
+      }),
+      Animated.timing(handleRotate, {
         toValue: 1,
-        duration: 620,
-        easing: Easing.inOut(Easing.cubic),
+        duration: 520,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
       if (finished) {
-        setTimeout(finishLogin, 220);
+        setTimeout(finishLogin, 180);
       }
     });
   };
@@ -340,16 +293,13 @@ const LoginScreen = ({ onLogin }) => {
 
     insertingRef.current = true;
     setIsLoading(true);
-    loopRef.current?.walkLoop?.stop();
     loopRef.current?.keyCycle?.stop();
     measureKeyTarget();
-    setTimeout(playInsertAndOpen, 40);
+    setTimeout(() => {
+      measureKeyTarget();
+      playInsertAndOpen();
+    }, 60);
   };
-
-  const keySpin = keyRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '25deg'],
-  });
 
   return (
     <KeyboardAvoidingView
@@ -409,7 +359,12 @@ const LoginScreen = ({ onLogin }) => {
               />
             </LinearGradient>
 
-            <View style={styles.actionRow} onLayout={measureKeyTarget}>
+            <View
+              ref={rowRef}
+              collapsable={false}
+              style={styles.actionRow}
+              onLayout={measureKeyTarget}
+            >
               <TouchableOpacity
                 accessibilityRole="button"
                 style={styles.loginButton}
@@ -420,58 +375,48 @@ const LoginScreen = ({ onLogin }) => {
                 <Text style={styles.loginButtonText}>
                   {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                 </Text>
-                {!isLoading ? <WalkingPeople /> : null}
+                {!isLoading ? <ButtonIcons /> : null}
               </TouchableOpacity>
 
-              <View
-                ref={pathRef}
-                collapsable={false}
-                style={styles.path}
-                onLayout={measureKeyTarget}
-              >
+              <View style={styles.path} onLayout={measureKeyTarget}>
                 <Animated.View style={[styles.pathGlow, { opacity: glow }]} />
-                <Animated.View
-                  style={[
-                    styles.walkersOnPath,
-                    {
-                      opacity: walkOpacity,
-                      transform: [{ translateX: walkX }],
-                    },
-                  ]}
-                  pointerEvents="none"
-                >
-                  <WalkingPeople />
-                </Animated.View>
-                <Animated.View
-                  style={[
-                    styles.keyOnPath,
-                    {
-                      opacity: keyOpacity,
-                      transform: [
-                        { translateX: keyX },
-                        { rotate: keySpin },
-                        { scale: keyScale },
-                      ],
-                    },
-                  ]}
-                  pointerEvents="none"
-                >
-                  <KeyIcon />
-                </Animated.View>
+                <View
+                  ref={keyHomeRef}
+                  collapsable={false}
+                  style={styles.keyHome}
+                />
               </View>
 
               <View style={styles.doorButtonWrap}>
                 <LinearGradient
-                  colors={['#6366F1', '#4F46E5']}
+                  colors={['#6D73F5', '#4F46E5']}
                   style={styles.doorButton}
                 >
                   <DoorIcon
                     handleRotate={handleRotate}
-                    doorOpen={doorOpen}
                     holeRef={holeRef}
                   />
                 </LinearGradient>
               </View>
+
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.keyOverlay,
+                  {
+                    left: keyHome.left,
+                    top: keyHome.top,
+                    opacity: keyOpacity,
+                    transform: [
+                      { translateX: keyX },
+                      { translateY: keyY },
+                      { scale: keyScale },
+                    ],
+                  },
+                ]}
+              >
+                <KeyIcon />
+              </Animated.View>
             </View>
 
             <View style={styles.infoContainer}>
@@ -601,137 +546,168 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(99, 102, 241, 0.45)',
   },
-  walkersOnPath: {
-    position: 'absolute',
-    left: -8,
-    zIndex: 2,
+  buttonIcons: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    marginLeft: 4,
+    height: 22,
   },
-  keyOnPath: {
+  miniDoor: {
+    width: 13,
+    height: 22,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 1,
+    borderBottomRightRadius: 1,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniDoorHole: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: COLORS.purple,
+  },
+  keyHome: {
+    width: 28,
+    height: 16,
+    marginLeft: 4,
+  },
+  keyOverlay: {
     position: 'absolute',
-    left: 8,
-    zIndex: 8,
+    zIndex: 40,
+    elevation: 40,
   },
   doorButtonWrap: {
-    width: 72,
-    height: 72,
+    width: 74,
+    height: 74,
     overflow: 'visible',
   },
   doorButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+    width: 74,
+    height: 74,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'visible',
   },
   doorStage: {
-    width: 44,
-    height: 52,
-    alignItems: 'flex-start',
+    width: 58,
+    height: 56,
+    alignItems: 'center',
     justifyContent: 'center',
     overflow: 'visible',
   },
-  doorHinge: {
-    width: 34,
-    height: 46,
-    transformOrigin: 'left center',
-  },
   door: {
-    width: 34,
-    height: 46,
-    backgroundColor: '#0B1220',
-    borderTopLeftRadius: 17,
-    borderTopRightRadius: 17,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
+    width: 36,
+    height: 48,
+    backgroundColor: '#0B0F1A',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
     alignItems: 'center',
-    paddingTop: 14,
+    justifyContent: 'center',
+    overflow: 'visible',
   },
   keyhole: {
     alignItems: 'center',
+    marginTop: 4,
   },
   keyholeCircle: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
     backgroundColor: '#C7D2FE',
   },
   keyholeSlot: {
-    width: 5,
-    height: 9,
+    width: 7,
+    height: 10,
     backgroundColor: '#C7D2FE',
-    borderBottomLeftRadius: 2,
-    borderBottomRightRadius: 2,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
     marginTop: -1,
   },
   handle: {
     position: 'absolute',
-    right: 3,
-    top: 20,
-    width: 16,
-    height: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    transformOrigin: '4px 5px',
-  },
-  handlePivot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E5E7EB',
-  },
-  handleBar: {
-    width: 10,
-    height: 3,
-    backgroundColor: '#E5E7EB',
-    marginLeft: -1,
-    borderRadius: 1,
-  },
-  handleKnob: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#F8FAFC',
-    marginLeft: -1,
-  },
-  keyIcon: {
-    width: 22,
+    right: -13,
+    top: 14,
+    width: 24,
     height: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    transformOrigin: '6px 6px',
+    zIndex: 2,
   },
-  keyHead: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
+  handleBase: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: '#070A12',
+  },
+  handleBar: {
+    width: 14,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#070A12',
+    marginLeft: -2,
+  },
+  keyIcon: {
+    width: 28,
+    height: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  keyBow: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2.5,
+    borderColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keyBowHole: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   keyShaft: {
-    width: 10,
-    height: 2,
-    backgroundColor: '#E5E7EB',
+    width: 11,
+    height: 2.5,
+    backgroundColor: '#F3F4F6',
+    marginLeft: -1,
   },
-  keyBit: {
-    width: 3,
+  keyTeethCol: {
+    marginLeft: -1,
+    justifyContent: 'flex-end',
+    height: 10,
+  },
+  keyToothTall: {
+    width: 5,
     height: 6,
-    backgroundColor: '#E5E7EB',
-    marginLeft: -3,
-    marginTop: 4,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 1,
   },
-  peopleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+  keyToothShort: {
+    width: 3,
+    height: 3,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 1,
+    marginTop: 1,
   },
   person: {
     width: 12,
     height: 22,
     alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   personHead: {
     width: 7,
-    height: 7,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3.5,
     backgroundColor: '#111827',
   },
   personBody: {
